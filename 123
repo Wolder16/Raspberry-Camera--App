@@ -1,0 +1,4 @@
+self._name = name + '.mp4'
+self._cap = VideoCapture(0)
+self._fourcc = VideoWriter_fourcc(*'MP4V')
+self._out = VideoWriter(self._name, self._fourcc, 20.0, (640,480))
