@@ -1,0 +1,22 @@
+{
+    "classes": [
+        {
+            "title": "CotletOk",
+            "shape": "bitmap",
+            "color": "#C5FB50",
+            "geometry_config": {},
+            "id": 11977490,
+            "hotkey": ""
+        },
+        {
+            "title": "CutletNotOk",
+            "shape": "bitmap",
+            "color": "#78248F",
+            "geometry_config": {},
+            "id": 11977492,
+            "hotkey": ""
+        }
+    ],
+    "tags": [],
+    "projectType": "images"
+}
