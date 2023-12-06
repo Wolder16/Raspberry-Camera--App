@@ -1,8 +1,12 @@
-import cv2
-import time
 import math as m
+import urllib.request
+import cv2
 import mediapipe as mp
+import numpy as np
 
+stream = urllib.request.urlopen(input("введите ip адрес камеры "))
+bytes = bytes()
+last_time = 0
 
 # Calculate distance
 def findDistance(x1, y1, x2, y2):
@@ -17,7 +21,12 @@ def findAngle(x1, y1, x2, y2):
     degree = int(180 / m.pi) * theta
     return degree
 
-error_count = 0
+
+def func_void():
+    return 0
+
+def WARING():
+    return 0
 
 """
 Function to send alert. Use this function to send alert when bad posture detected.
@@ -54,32 +63,26 @@ pose = mp_pose.Pose()
 
 if __name__ == "__main__":
     # For webcam input replace file name with 0.
-    file_name = 'input.mp4'
     cap = cv2.VideoCapture(0)
     cap.set(3, 640)  # Width
     cap.set(4, 480)  # Lenght
 
 
-    X_NACHALO_LINII = 213
-    X_CONECZ_LINII = 426
 
 
-    # Meta.
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frame_size = (width, height)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
-    # Video writer.
-    video_output = cv2.VideoWriter('output.mp4', fourcc, fps, frame_size)
 
-    while cap.isOpened():
+
+    while True:
+        bytes += stream.read(1024)
+        a = bytes.find(b'\xff\xd8')
+        b = bytes.find(b'\xff\xd9')
+        if a != -1 and b != -1:
+            jpg = bytes[a:b + 2]
+            bytes = bytes[b + 2:]
+            image = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
             # Capture frames.
-            success, image = cap.read()
-            if not success:
-                print("Null.Frames")
-                break
+            #success, image = cap.read()
             # Get fps.
             fps = cap.get(cv2.CAP_PROP_FPS)
             # Get height and width.
@@ -112,11 +115,25 @@ if __name__ == "__main__":
                 # Left ear.
                 l_ear_x = int(lm.landmark[lmPose.LEFT_EAR].x * w)
                 l_ear_y = int(lm.landmark[lmPose.LEFT_EAR].y * h)
+
+                r_ear_x = int(lm.landmark[lmPose.RIGHT_EAR].x * w)
+                r_ear_y = int(lm.landmark[lmPose.RIGHT_EAR].y * h)
                 # Left hip.
                 l_hip_x = int(lm.landmark[lmPose.LEFT_HIP].x * w)
                 l_hip_y = int(lm.landmark[lmPose.LEFT_HIP].y * h)
 
+                r_hip_x = int(lm.landmark[lmPose.RIGHT_HIP].x * w)
+                r_hip_y = int(lm.landmark[lmPose.RIGHT_HIP].y * h)
+
+                r_heel_x = int(lm.landmark[lmPose.RIGHT_HEEL].x * h)
+                r_heel_y = int(lm.landmark[lmPose.RIGHT_HEEL].y * h)
+
+                l_heel_x = int(lm.landmark[lmPose.LEFT_HEEL].x * h)
+                l_heel_y = int(lm.landmark[lmPose.LEFT_HEEL].y * h)
                 # Calculate distance between left shoulder and right shoulder points.
+
+                X_arr = [l_shldr_x, r_shldr_x, l_ear_x, r_ear_x, l_hip_x, r_hip_x, r_heel_x, l_heel_x]
+                Y_arr = [l_shldr_y, r_shldr_y, l_ear_y, r_ear_y, l_hip_y, r_hip_y, r_heel_y, l_heel_y]
                 offset = findDistance(l_shldr_x, l_shldr_y, r_shldr_x, r_shldr_y)
 
                 # Assist to align the camera to point at the side view of the person.
@@ -126,38 +143,45 @@ if __name__ == "__main__":
                 neck_inclination = findAngle(l_shldr_x, l_shldr_y, l_ear_x, l_ear_y)
                 torso_inclination = findAngle(l_hip_x, l_hip_y, l_shldr_x, l_shldr_y)
 
-                # Draw landmarks.
-                cv2.circle(image, (l_shldr_x, l_shldr_y), 7, yellow, -1)
-                cv2.circle(image, (l_ear_x, l_ear_y), 7, yellow, -1)
+                X_NACHALO_LINII = 213
+                X_CONECZ_LINII = 426
+                cvet = (127, 255, 0)
+                flag = False
+                for i in X_arr :
+                    if i > X_NACHALO_LINII and i < X_CONECZ_LINII:
+                        cvet = (0, 0 , 255)
+                        WARING()
+                        break
+                    else:
+                        cvet = (127, 255, 0)
 
-                # Let's take y - coordinate of P3 100px above x1,  for display elegance.
-                # Although we are taking y = 0 while calculating angle between P1,P2,P3.
-
-                cv2.circle(image, (l_hip_x, l_hip_y), 7, yellow, -1)
-
-                # Similarly, here we are taking y - coordinate 100px above x1. Note that
-                # you can take any value for y, not necessarily 100 or 200 pixels.
-
-                # Put text, Posture and angle inclination.
-                # Text string for display.
-                angle_text_string = 'Neck : ' + str(int(neck_inclination)) + '  Torso : ' + str(int(torso_inclination))
-
-                # Determine whether good posture or bad posture.
-                # The threshold angles have been set based on intuition.
-
-                # Join landmarks.
-                cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), green, 4)
-                cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), green, 4)
-                #cv2.line(image, (l_hip_x, l_hip_y), (l_hip_x, l_hip_y - 100), green, 4)
-
-                cv2.line(image,(X_NACHALO_LINII, 0),(X_NACHALO_LINII,480), red, 8)
+                cv2.line(image, (X_NACHALO_LINII, 0), (X_NACHALO_LINII, 480), red, 8)
                 cv2.line(image, (X_CONECZ_LINII, 0), (X_CONECZ_LINII, 480), red, 8)
 
-                video_output.write(image)
+                cv2.line(image, (l_shldr_x, l_shldr_y), (l_ear_x, l_ear_y), cvet, 4)
+                cv2.line(image, (l_ear_x, l_ear_y), (r_ear_x, r_ear_y), cvet, 4)
+                cv2.line(image, (r_shldr_x, r_shldr_y), (r_ear_x, r_ear_y), cvet, 4)
+                cv2.line(image, (l_hip_x, l_hip_y), (l_shldr_x, l_shldr_y), cvet, 4)
+                cv2.line(image, (r_shldr_x, r_shldr_y), (l_shldr_x, l_shldr_y), cvet, 4)
+                cv2.line(image, (r_hip_x, r_hip_y), (r_shldr_x, r_shldr_y), cvet, 4)
+                cv2.line(image, (r_hip_x, r_hip_y), (l_hip_x, l_hip_y), cvet, 4)
+                cv2.line(image, (r_hip_x, r_hip_y), (r_heel_x, r_heel_y), cvet, 4)
+                cv2.line(image, (l_hip_x, l_hip_y), (l_heel_x, l_heel_y), cvet, 4)
 
-            except:
-                error_count += 1
-                print("error\t"+str(error_count))
+                cv2.circle(image, (l_shldr_x, l_shldr_y), 7, yellow, -1)
+                cv2.circle(image, (r_shldr_x, r_shldr_y), 7, yellow, -1)
+
+                cv2.circle(image, (l_ear_x, l_ear_y), 7, yellow, -1)
+                cv2.circle(image, (r_ear_x, r_ear_y), 7, yellow, -1)
+
+                cv2.circle(image, (l_hip_x, l_hip_y), 7, yellow, -1)
+                cv2.circle(image, (r_hip_x, r_hip_y), 7, yellow, -1)
+
+                cv2.circle(image, (l_heel_x, l_heel_y), 7, yellow, -1)
+                cv2.circle(image, (r_heel_x, r_heel_y), 7, yellow, -1)
+
+            except AttributeError:
+                func_void()
 
             # Display.
             cv2.imshow('MediaPipe Pose', image)
